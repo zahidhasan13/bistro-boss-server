@@ -123,31 +123,56 @@ async function run() {
     // TODO----------
     // app.get("/menu/:id", async (req, res) => {
     //   const id = req.params.id;
-    //   console.log(id);
-    //   // const query = { _id: new ObjectId(id) };
+    //   const query = { _id: new ObjectId(id) };
     //   // console.log(query);
     //   const result = await menuCollection.findOne({ _id: new ObjectId(id) });
     //   console.log(result);
     //   res.send(result);
     // });
+    app.get("/singleItem/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+
+        const result = await menuCollection.findOne(query);
+
+        if (result) {
+          console.log(result);
+          res.send(result);
+        } else {
+          // If no result is found for the given id
+          res.status(404).send({ error: "Item not found" });
+        }
+      } catch (error) {
+        console.log(error);
+        res.status(500).send({ error: "Internal server error" });
+      }
+    });
 
     app.post("/menu", verifyJWT, verifyAdmin, async (req, res) => {
       const newItem = req.body;
       const result = await menuCollection.insertOne(newItem);
       res.send(result);
     });
-    // app.put("/update/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const query = { _id: new ObjectId(id) };
-    //   const menuUpdated = req.body;
-    //   const updateMenu = {
-    //     $set: {
-    //       status: menuUpdated.status,
-    //     },
-    //   };
-    //   const result = await menuCollection.updateOne(query, updateMenu);
-    //   res.send(result);
-    // });
+
+    app.put("/updateitem/:id", async (req, res) => {
+      const id = req.params.id;
+      const item = req.body;
+      console.log(item);
+      const query = { _id: new ObjectId(id) };
+      const option = { upsert: true };
+      const updatedItem = {
+        $set: {
+          name: item.name,
+          recipe: item.recipe,
+          category: item.category,
+          price: item.price,
+        },
+      };
+      const result = await menuCollection.updateOne(query, updatedItem, option);
+      console.log("result", result);
+      res.send(result);
+    });
 
     app.delete("/menu/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
@@ -159,6 +184,29 @@ async function run() {
     // review
     app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/review", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        res.send([]);
+      }
+
+      const decodedEmail = req.decoded.email;
+      if (decodedEmail !== email) {
+        return res
+          .status(403)
+          .send({ error: true, message: "Forbidden Email" });
+      }
+      const query = { email: email };
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post("/reviews", async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
       res.send(result);
     });
 
@@ -244,8 +292,12 @@ async function run() {
 
     // Booking related api
 
+    app.get("/bookings", async (req, res) => {
+      const result = await bookingCollection.find().toArray();
+      res.send(result);
+    });
+
     app.get("/booking", verifyJWT, async (req, res) => {
-      console.log("Reached /booking endpoint");
       const email = req.query.email;
       if (!email) {
         res.send([]);
@@ -265,6 +317,13 @@ async function run() {
     app.post("/booking", async (req, res) => {
       const newBookings = req.body;
       const result = await bookingCollection.insertOne(newBookings);
+      res.send(result);
+    });
+
+    app.delete("/booking/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingCollection.deleteOne(query);
       res.send(result);
     });
 
